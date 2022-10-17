@@ -155,18 +155,8 @@ func parseLine(line string) []string {
 }
 
 /*
-func checkSender(m Message) {
-	receiver = m.receiverID
-	switch {
-	default:
-	// send message to everyone
-	case strings.HasPrefix(m, m.receiverID):
-		// send message to that client
+
+	for name := range clientIDs {
+
 	}
-}\
-*/
-
-/*
-
-	for name := range
 */
