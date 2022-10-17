@@ -38,23 +38,24 @@ func createTCPClient() {
 	defer c.Close()
 
 	fmt.Print("enter your username : ")
+	/*
+		reader := bufio.NewReader(os.Stdin)
+		username, err := reader.ReadString('\n')
+		logFatal(err)
+		username = strings.Trim(username, " \r\n")
+		fmt.Printf("Welcome user %s! Send messages to other users.\n", username)
+		fmt.Print(">> ")
 
-	reader := bufio.NewReader(os.Stdin)
-	username, err := reader.ReadString('\n')
-	logFatal(err)
-
-	username = strings.Trim(username, " \r\n")
-	fmt.Printf("Welcome user %s! Send messages to other users.\n", username)
-	fmt.Print(">> ")
+	*/
 
 	// read
-	go unicastReceive(c)
+	go read(c)
 
 	// write
-	unicastSend(c, username)
+	write(c)
 }
 
-func unicastReceive(c net.Conn) {
+func read(c net.Conn) {
 	for {
 		reader := bufio.NewReader(c)
 		message, err := reader.ReadString('\n')
@@ -63,28 +64,27 @@ func unicastReceive(c net.Conn) {
 			fmt.Println("Connection closed.")
 			os.Exit(0)
 		}
-		fmt.Println(message)
+		message = strings.TrimSpace(message)
+		printMessage := fmt.Sprintf("[%s] %s\n", t.Format(time.Kitchen), message)
+		fmt.Println(printMessage)
 		fmt.Print(">> ")
 	}
 }
 
-func unicastSend(connection net.Conn, username string) {
+func write(c net.Conn) {
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		message, err := reader.ReadString('\n')
 		if err != nil {
 			break
 		}
+
 		if strings.Contains(message, "EXIT") {
 			fmt.Println("Exiting the client...")
 			os.Exit(0)
 		}
-		message = fmt.Sprintf("%s: %s\n", username, strings.Trim(message, "\n"))
-		connection.Write([]byte(message))
+		// message = fmt.Sprintf("%s: %s\n", username, strings.Trim(message, "\n"))
+		c.Write([]byte(message))
 		fmt.Print(">> ")
 	}
-}
-
-func parseLine(line string) []string {
-	return strings.Split(line, " ")
 }
