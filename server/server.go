@@ -40,6 +40,8 @@ var (
 	sender   = " "
 	msg      = " "
 	count    = 0
+	username = " "
+	// m        = Message{receiver, sender, msg}
 )
 
 func main() {
@@ -76,6 +78,11 @@ func createTCPServer(port string) {
 	for {
 		c := <-newConnection
 		go receive(c)
+		/*
+			username := <-clientIDs
+			fmt.Println(username)
+			check(c, username)
+		*/
 	}
 }
 
@@ -92,14 +99,14 @@ func receive(c net.Conn) {
 		textParsed := parseLine(text)
 		if len(textParsed) == 1 && strings.Contains(text, "/") {
 			// fmt.Println("Contains '/' ")
-			username := strings.Trim(text, "/")
-			fmt.Print("username = ", username)
-			// put username into clientID map
-			// clientConnections[username] = true
-			// clientIDs <- username
-			for i := range clientConnections {
-				fmt.Println(i)
-			}
+			username = strings.Trim(text, "/")
+			// fmt.Print("username = ", username)
+
+			// channel username into clientID map
+			go func() {
+				clientConnections[username] = true
+				clientIDs <- username
+			}()
 		} else if len(textParsed) >= 3 {
 			receiver = textParsed[0]
 			sender = textParsed[1]
@@ -111,10 +118,14 @@ func receive(c net.Conn) {
 			fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} "+"\n")
 			c.Write([]byte(text))
 		}
-
 		m := Message{receiver, sender, msg}
-		// checkSender(m)
+
+		// name := <-clientIDs
+		// fmt.Println(name)
+		// check(c, name)
+		check(username)
 		broadcastMessage(c, m)
+
 	}
 }
 
@@ -122,23 +133,6 @@ func broadcastMessage(c net.Conn, m Message) {
 	// check which client sent the message
 	// check who the client is sending the message to
 	// send message to that client
-
-	//
-	/*
-		for o := range openConnections {
-			for n := range newConnection {
-				fmt.Print("new connection = ")
-				fmt.Println(n)
-				// n.Write([]byte(m.messageContent))
-			}
-			fmt.Println(o)
-				if n != c {
-					n.Write([]byte(m.messageContent))
-				}
-
-		}
-
-	*/
 
 	// loop through all the open connections and send messages to these connections
 	// except the connection that sent the message
@@ -150,13 +144,25 @@ func broadcastMessage(c net.Conn, m Message) {
 	}
 }
 
+func check(username string) {
+	for j := range clientConnections {
+		fmt.Println(j)
+		/*
+			if j != username {
+				fmt.Println(j)
+				// item.Write([]byte(invalidUser))
+			}
+			else {
+				invalidUser := fmt.Sprintf("user does not exist!")
+				fmt.Println(invalidUser)
+				// item.Write([]byte(invalidUser))
+			}
+
+		*/
+	}
+	// broadcastMessage(c, m)
+}
+
 func parseLine(line string) []string {
 	return strings.Split(line, " ")
 }
-
-/*
-
-	for name := range clientIDs {
-
-	}
-*/
