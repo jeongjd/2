@@ -35,17 +35,7 @@ func main() {
 func createTCPClient() {
 	c, err := net.Dial("tcp", hostAddress+":"+port)
 	logFatal(err)
-
 	fmt.Print("enter your username : ")
-	/*
-		reader := bufio.NewReader(os.Stdin)
-		username, err := reader.ReadString('\n')
-		logFatal(err)
-		username = strings.Trim(username, " \r\n")
-		fmt.Printf("Welcome user %s! Send messages to other users.\n", username)
-		fmt.Print(">> ")
-
-	*/
 
 	// read
 	go read(c)
