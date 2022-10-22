@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"strings"
-	"time"
 )
 
 var (
@@ -26,143 +24,126 @@ type Message struct {
 	messageContent string
 }
 
-var things map[string](chan int)
-var (
-	openConnections   = make(map[net.Conn]bool)
-	newConnection     = make(chan net.Conn)
-	clientConnections = make(map[string]bool)
-	clientIDs         = make(chan string)
-	now               = time.Now()
-	clientID          = make(map[string]chan string)
+type Connection struct {
+	connection net.Conn
+	sender     string
+}
 
-	// deadConnection  = make(chan net.Conn)
-	receiver = " "
-	sender   = " "
-	msg      = " "
-	count    = 0
-	username = " "
-	// m        = Message{receiver, sender, msg}
+var (
+	connections = make(map[string]net.Conn)
+	receiver    = " "
+	sender      = " "
+	msg         = " "
+	count       = 0
+	username    = " "
 )
 
+//	func main() {
+//		fmt.Print("Enter a port number: ")
+//		fmt.Scanln(&port)
+//		port = ":" + port
+//		fmt.Println("Launching a TCP Chatroom Server...")
+//		go createTCPServer(port)
+//		reader := bufio.NewReader(os.Stdin)
+//		fmt.Print(">> ")
+//		text, _ := reader.ReadString('\n')
+//		if strings.Contains(text, "EXIT") {
+//			fmt.Println("Exiting the server...")
+//			os.Exit(0)
+//		}
+//	}
+//
+// partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
 func main() {
 	fmt.Print("Enter a port number: ")
 	fmt.Scanln(&port)
 	port = ":" + port
 	fmt.Println("Launching a TCP Chatroom Server...")
-	go createTCPServer(port)
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print(">> ")
-	text, _ := reader.ReadString('\n')
-	if strings.Contains(text, "EXIT") {
-		fmt.Println("Exiting the server...")
-		os.Exit(0)
-	}
-}
 
-func createTCPServer(port string) {
-	l, err := net.Listen("tcp", port)
-	logFatal(err)
+	l, err := net.Listen("tcp4", port)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	defer l.Close()
-
-	go func() {
-		for {
-			c, err := l.Accept()
-			logFatal(err)
-			openConnections[c] = true
-			newConnection <- c
-			count++
-			fmt.Println("Number of connected clients = ", count)
-			fmt.Print(">> ")
-		}
-	}()
+	// look into why this works
 	for {
-		c := <-newConnection
-		go receive(c)
-		/*
-			username := <-clientIDs
-			fmt.Println(username)
-			check(c, username)
-		*/
+		c, err := l.Accept()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		go handleConnection(c)
+		count++
 	}
 }
 
-// change this function to receive(c net.Conn)
-// put the broadcast part into another function broadcastMessage with destination
-func receive(c net.Conn) {
+// partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
+func handleConnection(c net.Conn) {
 	for {
-		reader := bufio.NewReader(c)
-		text, err := reader.ReadString('\n')
+		text, err := bufio.NewReader(c).ReadString('\n')
 		if err != nil {
-			break
+			fmt.Println(err)
+			return
 		}
 
 		textParsed := parseLine(text)
+		temp := strings.TrimSpace(string(text))
+		if temp == "STOP" {
+			break
+		}
 		if len(textParsed) == 1 && strings.Contains(text, "/") {
 			// fmt.Println("Contains '/' ")
 			username = strings.Trim(text, "/")
-			// fmt.Print("username = ", username)
+			username = strings.Trim(username, " \r\n")
+			connections[username] = c
 
-			// channel username into clientID map
-			go func() {
-				clientConnections[username] = true
-				clientIDs <- username
-			}()
-		} else if len(textParsed) >= 3 {
-			receiver = textParsed[0]
-			sender = textParsed[1]
-			textTrimmed := strings.Join(textParsed, " ")
-			needsTrim := receiver + " " + sender
-			textTrimmed = strings.TrimPrefix(textTrimmed, needsTrim)
-			msg = textTrimmed
 		} else {
-			fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} "+"\n")
-			c.Write([]byte(text))
-		}
-		m := Message{receiver, sender, msg}
+			if len(textParsed) >= 3 {
+				receiver = textParsed[0]
+				sender = textParsed[1]
+				textTrimmed := strings.Join(textParsed, " ")
+				needsTrim := receiver + " " + sender
+				textTrimmed = strings.TrimPrefix(textTrimmed, needsTrim)
+				msg = textTrimmed
+			} else {
+				fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} "+"\n")
+				c.Write([]byte(text))
+			}
+			m := Message{receiver, sender, msg}
 
-		// name := <-clientIDs
-		// fmt.Println(name)
-		// check(c, name)
-		check(username)
-		broadcastMessage(c, m)
+			// name := <-clientIDs
+			// fmt.Println(name)
+			// check(c, name)
+			//check(username)
+			broadcastMessage(c, m)
+		}
 
 	}
+	c.Close()
+
+}
+
+func parseLine(line string) []string {
+	return strings.Split(line, " ")
 }
 
 func broadcastMessage(c net.Conn, m Message) {
+	fmt.Println("this is connection# ", count)
 	// check which client sent the message
 	// check who the client is sending the message to
 	// send message to that client
 
 	// loop through all the open connections and send messages to these connections
 	// except the connection that sent the message
-	for item := range openConnections {
-		// fmt.Println(item)
-		if item != c {
-			item.Write([]byte(m.messageContent))
+	for item := range connections {
+		if item == m.receiverID {
+			connections[item].Write([]byte(m.messageContent))
 		}
+		//if item.sender == m.receiverID {
+		//	fmt.Println("ReceiverID ", m.receiverID)
+		//	fmt.Println("Entered the boolean ")
+		//	item.connection.Write([]byte(m.messageContent))
+		//}
 	}
-}
-
-func check(username string) {
-	for j := range clientConnections {
-		fmt.Println(j)
-		/*
-			if j != username {
-				fmt.Println(j)
-				// item.Write([]byte(invalidUser))
-			}
-			else {
-				invalidUser := fmt.Sprintf("user does not exist!")
-				fmt.Println(invalidUser)
-				// item.Write([]byte(invalidUser))
-			}
-
-		*/
-	}
-	// broadcastMessage(c, m)
-}
-
-func parseLine(line string) []string {
-	return strings.Split(line, " ")
 }

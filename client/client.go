@@ -35,7 +35,6 @@ func main() {
 func createTCPClient() {
 	c, err := net.Dial("tcp", hostAddress+":"+port)
 	logFatal(err)
-	defer c.Close()
 
 	fmt.Print("enter your username : ")
 	/*
