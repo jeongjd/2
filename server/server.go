@@ -72,7 +72,7 @@ func handleConnection(c net.Conn) {
 				textTrimmed := strings.Join(textParsed, " ")
 				needsTrim := receiver + " " + sender
 				textTrimmed = strings.TrimPrefix(textTrimmed, needsTrim)
-				msg := textTrimmed
+				msg := sender + ":" + textTrimmed
 				m = Message{receiver, sender, msg}
 			} else {
 				fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} "+"\n")
