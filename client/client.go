@@ -13,7 +13,6 @@ import (
 
 var (
 	t           = time.Now()
-	myTime      = t.Format(time.RFC3339) + "\n"
 	hostAddress = " "
 	port        = " "
 )
