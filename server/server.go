@@ -1,8 +1,9 @@
 package main
 
 import (
-	"bufio"
+	"encoding/gob"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 )
@@ -76,7 +77,11 @@ func main() {
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
 func handleConnection(c net.Conn) {
 	for {
-		text, err := bufio.NewReader(c).ReadString('\n')
+		//text, err := bufio.NewReader(c).ReadString('\n')
+		var text string
+		dec := gob.NewDecoder(c)
+		err := dec.Decode(&text)
+
 		if err != nil {
 			disconnectedClient <- c
 			name := getKey(clientConnections, c)
@@ -103,14 +108,24 @@ func handleConnection(c net.Conn) {
 				msg := sender + ":" + textTrimmed
 				m = Message{receiver, sender, msg}
 			} else {
-				fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} \n")
+				enc := gob.NewEncoder(c)
+				newMessage := "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
+				if err := enc.Encode(newMessage); err != nil {
+					log.Fatal(err)
+				}
+				//fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} \n")
 			}
 
 			// check if both sender and receiver usernames exist
 			if checkKey(m.senderID, clientConnections) == true && checkKey(m.receiverID, clientConnections) {
 				broadcastMessage(c, m)
 			} else {
-				fmt.Fprintf(c, "Invalid user! \n")
+				enc := gob.NewEncoder(c)
+				newMessage := "Invalid user! \n"
+				if err := enc.Encode(newMessage); err != nil {
+					log.Fatal(err)
+				}
+				//fmt.Fprintf(c, "Invalid user! \n")
 			}
 		}
 	}
@@ -145,7 +160,9 @@ func broadcastMessage(c net.Conn, m Message) {
 	// Loop through all the connections and send messages to a specific user
 	for item := range clientConnections {
 		if item == m.receiverID {
-			clientConnections[item].Write([]byte(m.messageContent))
+			enc := gob.NewEncoder(clientConnections[item])
+			enc.Encode(m.messageContent)
+			//clientConnections[item].Write([]byte(m.messageContent))
 		}
 	}
 }

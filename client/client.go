@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,12 @@ var (
 	hostAddress = " "
 	port        = " "
 )
+
+type Message struct {
+	receiverID     string
+	senderID       string
+	messageContent string
+}
 
 func logFatal(err error) {
 	if err != nil {
@@ -41,16 +48,22 @@ func createTCPClient() {
 
 func read(c net.Conn) {
 	for {
-		reader := bufio.NewReader(c)
-		message, err := reader.ReadString('\n')
+		//reader := bufio.NewReader(c)
+		//message, err1 := reader.ReadString('\n')
+		var message string
+		dec := gob.NewDecoder(c)
+		err := dec.Decode(&message)
+		if err != io.EOF && err != nil {
+			log.Fatal(err)
+		}
 		if err == io.EOF {
 			fmt.Println("Connection closed.")
 			c.Close()
 			os.Exit(0)
 		}
-		message = strings.TrimSpace(message)
-		printMessage := fmt.Sprintf("[%s] %s\n", t.Format(time.Kitchen), message)
-		fmt.Println(printMessage)
+		//newMessage = strings.TrimSpace(message)
+		//printMessage := fmt.Sprintf("[%s] %s\n", t.Format(time.Kitchen), message)
+		fmt.Println(message)
 		fmt.Print(">> ")
 	}
 }
@@ -67,7 +80,11 @@ func write(c net.Conn) {
 			return
 		}
 		// message = fmt.Sprintf("%s: %s\n", username, strings.Trim(message, "\n"))
-		c.Write([]byte(message))
+		enc := gob.NewEncoder(c)
+		if err := enc.Encode(message); err != nil {
+			log.Fatal(err)
+		}
+		//c.Write([]byte(message))
 		fmt.Print(">> ")
 	}
 }
