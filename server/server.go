@@ -53,12 +53,6 @@ func main() {
 	for {
 		select {
 		case c := <-newClient:
-			/*
-				for item := range openConnections {
-					fmt.Println("Connection: ", item)
-				}
-
-			*/
 			// Invoke broadcast message (broadcasts to the other connections
 			go handleConnection(c)
 		case c := <-disconnectedClient:
@@ -81,7 +75,6 @@ func handleConnection(c net.Conn) {
 		var text string
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&text)
-
 		if err != nil {
 			disconnectedClient <- c
 			name := getKey(clientConnections, c)
@@ -91,9 +84,9 @@ func handleConnection(c net.Conn) {
 			fmt.Println(err) // prints "EOF" in server
 			return
 		}
+		// m := parseMessage(c, text)
 		textParsed := parseLine(text)
 		if len(textParsed) == 1 && strings.Contains(text, "/") {
-			// fmt.Println("Contains '/' ")
 			username := strings.Trim(text, "/")
 			username = strings.Trim(username, " \r\n")
 			clientConnections[username] = c
@@ -115,30 +108,13 @@ func handleConnection(c net.Conn) {
 				}
 				//fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} \n")
 			}
-
-			// check if both sender and receiver usernames exist
-			if checkKey(m.senderID, clientConnections) == true && checkKey(m.receiverID, clientConnections) {
-				broadcastMessage(c, m)
-			} else {
-				enc := gob.NewEncoder(c)
-				newMessage := "Invalid user! \n"
-				if err := enc.Encode(newMessage); err != nil {
-					log.Fatal(err)
-				}
-				//fmt.Fprintf(c, "Invalid user! \n")
-			}
+			checkClients(c, m)
 		}
 	}
-	// c.Close()
 }
 
-func checkKey(str string, clientMap map[string]net.Conn) bool {
-	for item := range clientConnections {
-		if item == str {
-			return true
-		}
-	}
-	return false
+func parseLine(line string) []string {
+	return strings.Split(line, " ")
 }
 
 func getKey(clientMap map[string]net.Conn, c net.Conn) string {
@@ -150,8 +126,36 @@ func getKey(clientMap map[string]net.Conn, c net.Conn) string {
 	return "Key does not Exist"
 }
 
-func parseLine(line string) []string {
-	return strings.Split(line, " ")
+func checkKey(str string, clientMap map[string]net.Conn) bool {
+	for item := range clientConnections {
+		if item == str {
+			return true
+		}
+	}
+	return false
+}
+
+func parseMessage(c net.Conn, text string) {
+
+}
+
+func checkClients(c net.Conn, m Message) {
+	// check if both sender and receiver usernames exist
+	if checkKey(m.senderID, clientConnections) == true && checkKey(m.receiverID, clientConnections) {
+		// Check if senderID matches client username
+		if getKey(clientConnections, c) == m.senderID {
+			broadcastMessage(c, m)
+		} else {
+			fmt.Fprintf(c, "You are not %s! \n", m.senderID)
+		}
+	} else {
+		enc := gob.NewEncoder(c)
+		errorMessage := "Invalid user! \n"
+		if err := enc.Encode(errorMessage); err != nil {
+			log.Fatal(err)
+		}
+		//fmt.Fprintf(c, "Invalid user! \n")
+	}
 }
 
 func broadcastMessage(c net.Conn, m Message) {

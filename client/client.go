@@ -18,18 +18,6 @@ var (
 	port        = " "
 )
 
-type Message struct {
-	receiverID     string
-	senderID       string
-	messageContent string
-}
-
-func logFatal(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func main() {
 	fmt.Print("Enter a host address: ")
 	fmt.Scanln(&hostAddress)
@@ -40,8 +28,10 @@ func main() {
 
 func createTCPClient() {
 	c, err := net.Dial("tcp", hostAddress+":"+port)
-	logFatal(err)
-	fmt.Print("enter your username : ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Print("Enter your username in the format /name: ")
 	go read(c)
 	write(c)
 }
