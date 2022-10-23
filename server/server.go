@@ -14,8 +14,12 @@ type Message struct {
 }
 
 var (
-	connections = make(map[string]net.Conn)
-	count       = 0
+	// limit hashmap to 5
+	openConnections    = make(map[net.Conn]bool)
+	newClient          = make(chan net.Conn)
+	disconnectedClient = make(chan net.Conn)
+	clientConnections  = make(map[string]net.Conn)
+	count              = 0
 )
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -33,14 +37,39 @@ func main() {
 	}
 	defer l.Close()
 	// look into why this works
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			fmt.Println(err)
-			return
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			openConnections[c] = true
+			newClient <- c
+			count++
 		}
-		go handleConnection(c)
-		count++
+	}()
+	for {
+		select {
+		case c := <-newClient:
+			/*
+				for item := range openConnections {
+					fmt.Println("Connection: ", item)
+				}
+
+			*/
+			// Invoke broadcast message (broadcasts to the other connections
+			go handleConnection(c)
+		case c := <-disconnectedClient:
+			// remove/delete the connection
+			for item := range openConnections {
+				if item == c {
+					delete(openConnections, c)
+					fmt.Println("removed connection, remaining: ", openConnections)
+					fmt.Println("removed client = ", disconnectedClient)
+				}
+			}
+		}
 	}
 }
 
@@ -49,21 +78,20 @@ func handleConnection(c net.Conn) {
 	for {
 		text, err := bufio.NewReader(c).ReadString('\n')
 		if err != nil {
-			fmt.Println(err)
+			disconnectedClient <- c
+			name := getKey(clientConnections, c)
+			delete(clientConnections, name)
+			fmt.Printf("User '%s' left the server\n", name)
+			fmt.Println("remaining clients: ", clientConnections)
+			fmt.Println(err) // prints "EOF" in server
 			return
 		}
-
 		textParsed := parseLine(text)
-		temp := strings.TrimSpace(string(text))
-		if temp == "STOP" {
-			break
-		}
-
 		if len(textParsed) == 1 && strings.Contains(text, "/") {
 			// fmt.Println("Contains '/' ")
 			username := strings.Trim(text, "/")
 			username = strings.Trim(username, " \r\n")
-			connections[username] = c
+			clientConnections[username] = c
 		} else {
 			var m Message
 			if len(textParsed) >= 3 {
@@ -75,26 +103,49 @@ func handleConnection(c net.Conn) {
 				msg := sender + ":" + textTrimmed
 				m = Message{receiver, sender, msg}
 			} else {
-				fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} "+"\n")
-				c.Write([]byte(text))
+				fmt.Fprintf(c, "Invalid input! Please type in the form of {To:user} {From:user} {message} \n")
 			}
-			broadcastMessage(m)
+
+			// check if both sender and receiver usernames exist
+			if checkKey(m.senderID, clientConnections) == true && checkKey(m.receiverID, clientConnections) {
+				broadcastMessage(c, m)
+			} else {
+				fmt.Fprintf(c, "Invalid user! \n")
+			}
 		}
 	}
-	c.Close()
+	// c.Close()
+}
+
+func checkKey(str string, clientMap map[string]net.Conn) bool {
+	for item := range clientConnections {
+		if item == str {
+			return true
+		}
+	}
+	return false
+}
+
+func getKey(clientMap map[string]net.Conn, c net.Conn) string {
+	for key, value := range clientConnections {
+		if c == value {
+			return key
+		}
+	}
+	return "Key does not Exist"
 }
 
 func parseLine(line string) []string {
 	return strings.Split(line, " ")
 }
 
-func broadcastMessage(m Message) {
+func broadcastMessage(c net.Conn, m Message) {
 	fmt.Println("this is connection# ", count)
 
-	// Loop through all the open connections and send messages to a specific user
-	for item := range connections {
+	// Loop through all the connections and send messages to a specific user
+	for item := range clientConnections {
 		if item == m.receiverID {
-			connections[item].Write([]byte(m.messageContent))
+			clientConnections[item].Write([]byte(m.messageContent))
 		}
 	}
 }

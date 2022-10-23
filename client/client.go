@@ -36,11 +36,7 @@ func createTCPClient() {
 	c, err := net.Dial("tcp", hostAddress+":"+port)
 	logFatal(err)
 	fmt.Print("enter your username : ")
-
-	// read
 	go read(c)
-
-	// write
 	write(c)
 }
 
@@ -49,8 +45,8 @@ func read(c net.Conn) {
 		reader := bufio.NewReader(c)
 		message, err := reader.ReadString('\n')
 		if err == io.EOF {
-			c.Close()
 			fmt.Println("Connection closed.")
+			c.Close()
 			os.Exit(0)
 		}
 		message = strings.TrimSpace(message)
@@ -67,10 +63,9 @@ func write(c net.Conn) {
 		if err != nil {
 			break
 		}
-
 		if strings.Contains(message, "EXIT") {
 			fmt.Println("Exiting the client...")
-			os.Exit(0)
+			return
 		}
 		// message = fmt.Sprintf("%s: %s\n", username, strings.Trim(message, "\n"))
 		c.Write([]byte(message))
