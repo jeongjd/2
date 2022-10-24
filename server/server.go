@@ -18,7 +18,7 @@ type Message struct {
 }
 
 var (
-	// Map - key: username, value: connection
+	// Map - key: (client) username, value: connection
 	clientConnections = make(map[string]net.Conn)
 
 	// For switch/cases - printing error messages
