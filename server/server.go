@@ -70,7 +70,6 @@ func closeServer() {
 	}
 }
 
-// partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
 // Handle client connections - invoke other functions depending on the messages received
 func handleConnection(c net.Conn) {
 	for {
