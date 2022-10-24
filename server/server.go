@@ -95,15 +95,6 @@ func getKey(c net.Conn) string {
 	return "Key does not Exist"
 }
 
-func checkKey(str string) bool {
-	for item := range clientConnections {
-		if item == str {
-			return true
-		}
-	}
-	return false
-}
-
 func parseMessage(c net.Conn, text string) {
 	textParsed := parseLine(text)
 	if len(textParsed) == 1 && strings.Contains(text, "/") {
@@ -126,6 +117,15 @@ func parseMessage(c net.Conn, text string) {
 			log.Fatal(err)
 		}
 	}
+}
+
+func checkKey(str string) bool {
+	for item := range clientConnections {
+		if item == str {
+			return true
+		}
+	}
+	return false
 }
 
 func checkClients(c net.Conn, m Message) {
