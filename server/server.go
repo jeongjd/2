@@ -61,7 +61,11 @@ func handleConnection(c net.Conn) {
 		m := parseMessage(c, text)
 		if reflect.ValueOf(m).IsZero() == false {
 			fmt.Println("struct is NOT empty")
-			checkClients(c, m)
+			if checkClients(c, m) == true {
+				broadcastMessage(m)
+			} else {
+				printErrorMessage(c)
+			}
 		} else {
 			fmt.Println("struct is empty")
 		}
@@ -115,26 +119,35 @@ func checkKey(str string) bool {
 	return false
 }
 
-func checkClients(c net.Conn, m Message) {
+func checkClients(c net.Conn, m Message) bool {
 	// Check if both sender and receiver usernames exist
 	if checkKey(m.senderID) == true && checkKey(m.receiverID) {
 		// Check if senderID matches client username
 		if getKey(c) == m.senderID {
-			broadcastMessage(m)
+			// broadcastMessage(m)
+			return true
 		} else {
 			// If senderID does not match client username
-			enc := gob.NewEncoder(c)
-			wrongUserMessage := "You are not " + m.senderID + "!"
-			if err := enc.Encode(wrongUserMessage); err != nil {
-				log.Fatal(err)
-			}
+			return false
+			/*
+				enc := gob.NewEncoder(c)
+				wrongUserMessage := "You are not " + m.senderID + "!"
+				if err := enc.Encode(wrongUserMessage); err != nil {
+					log.Fatal(err)
+				}
+
+			*/
 		}
 	} else {
-		enc := gob.NewEncoder(c)
-		errorMessage := "Invalid user!"
-		if err := enc.Encode(errorMessage); err != nil {
-			log.Fatal(err)
-		}
+		return false
+		/*
+			enc := gob.NewEncoder(c)
+			errorMessage := "Invalid user!"
+			if err := enc.Encode(errorMessage); err != nil {
+				log.Fatal(err)
+			}
+
+		*/
 	}
 }
 
@@ -145,5 +158,13 @@ func broadcastMessage(m Message) {
 			enc := gob.NewEncoder(clientConnections[item])
 			enc.Encode(m.messageContent)
 		}
+	}
+}
+
+func printErrorMessage(c net.Conn) {
+	enc := gob.NewEncoder(c)
+	errorMessage := "Invalid user!"
+	if err := enc.Encode(errorMessage); err != nil {
+		log.Fatal(err)
 	}
 }
