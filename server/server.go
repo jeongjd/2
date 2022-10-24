@@ -96,7 +96,6 @@ func parseMessage(c net.Conn, text string) Message {
 		textTrimmed = strings.TrimPrefix(textTrimmed, needsTrim)
 		msg := sender + ":" + textTrimmed
 		m = Message{receiver, sender, msg}
-		return m
 	} else {
 		enc := gob.NewEncoder(c)
 		newMessage := "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
