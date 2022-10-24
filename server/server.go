@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"reflect"
 	"strings"
 )
 
@@ -15,10 +16,7 @@ type Message struct {
 }
 
 var (
-	// limit map to 5
-	newClient         = make(chan net.Conn)
 	clientConnections = make(map[string]net.Conn)
-	m                 Message
 )
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -44,24 +42,6 @@ func main() {
 		}
 		go handleConnection(c)
 	}
-
-	/*
-		go func() {
-			for {
-				c, err := l.Accept()
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-				newClient <- c
-				// go handleConnection(c)
-			}
-		}()
-		for {
-			c := <-newClient
-			go handleConnection(c)
-		}
-	*/
 }
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -75,10 +55,16 @@ func handleConnection(c net.Conn) {
 			delete(clientConnections, name)
 			fmt.Printf("User '%s' left the server\n", name)
 			fmt.Println("remaining clients: ", clientConnections)
-			fmt.Println(err) // prints "EOF" in server
+			// fmt.Println(err) // prints "EOF" in server
 			return
 		}
-		parseMessage(c, text)
+		m := parseMessage(c, text)
+		if reflect.ValueOf(m).IsZero() == false {
+			fmt.Println("struct is NOT empty")
+			checkClients(c, m)
+		} else {
+			fmt.Println("struct is empty")
+		}
 	}
 }
 
@@ -95,8 +81,9 @@ func getKey(c net.Conn) string {
 	return "Key does not Exist"
 }
 
-func parseMessage(c net.Conn, text string) {
+func parseMessage(c net.Conn, text string) Message {
 	textParsed := parseLine(text)
+	var m Message
 	if len(textParsed) == 1 && strings.Contains(text, "/") {
 		username := strings.Trim(text, "/")
 		username = strings.Trim(username, " \r\n")
@@ -109,7 +96,7 @@ func parseMessage(c net.Conn, text string) {
 		textTrimmed = strings.TrimPrefix(textTrimmed, needsTrim)
 		msg := sender + ":" + textTrimmed
 		m = Message{receiver, sender, msg}
-		checkClients(c, m)
+		return m
 	} else {
 		enc := gob.NewEncoder(c)
 		newMessage := "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
@@ -117,6 +104,7 @@ func parseMessage(c net.Conn, text string) {
 			log.Fatal(err)
 		}
 	}
+	return m
 }
 
 func checkKey(str string) bool {
