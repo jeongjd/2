@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 type Message struct {
@@ -23,6 +24,8 @@ var (
 
 	// For switch/cases - printing error messages
 	option = 0
+
+	clientConnectionsMutex = sync.RWMutex{}
 )
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -82,6 +85,8 @@ func handleConnection(c net.Conn) {
 		// If a connection is closed delete the username from map (clientConnections)
 		if err != nil {
 			name := getKey(c)
+			clientConnectionsMutex.Lock()
+			defer clientConnectionsMutex.Unlock()
 			delete(clientConnections, name)
 			fmt.Printf("User '%s' disconnected from the server\n", name)
 			fmt.Println("remaining clients: ", clientConnections)
@@ -104,6 +109,8 @@ func handleConnection(c net.Conn) {
 
 // Get key of a map based on a value
 func getKey(c net.Conn) string {
+	clientConnectionsMutex.RLock()
+	defer clientConnectionsMutex.RUnlock()
 	for key, value := range clientConnections {
 		if c == value {
 			return key
@@ -121,7 +128,9 @@ func parseMessage(c net.Conn, text string) Message {
 	if len(textParsed) == 1 && strings.Contains(text, "/") {
 		username := strings.Trim(text, "/")
 		username = strings.Trim(username, " \r\n")
+		clientConnectionsMutex.Lock()
 		clientConnections[username] = c
+		clientConnectionsMutex.Unlock()
 	} else if len(textParsed) >= 3 {
 		receiver := textParsed[0]
 		sender := textParsed[1]
@@ -144,6 +153,8 @@ func parseLine(line string) []string {
 
 // Check if certain keys exist in a map
 func checkKey(str string) bool {
+	clientConnectionsMutex.RLock()
+	defer clientConnectionsMutex.RUnlock()
 	for item := range clientConnections {
 		if item == str {
 			return true
@@ -173,6 +184,8 @@ func checkClients(c net.Conn, m Message) bool {
 
 // Send private message to a specific client using gob
 func broadcastMessage(m Message) {
+	clientConnectionsMutex.RLock()
+	defer clientConnectionsMutex.RUnlock()
 	for item := range clientConnections {
 		if item == m.receiverID {
 			enc := gob.NewEncoder(clientConnections[item])
