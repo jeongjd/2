@@ -17,6 +17,7 @@ type Message struct {
 
 var (
 	clientConnections = make(map[string]net.Conn)
+	option            = 0
 )
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -55,19 +56,17 @@ func handleConnection(c net.Conn) {
 			delete(clientConnections, name)
 			fmt.Printf("User '%s' left the server\n", name)
 			fmt.Println("remaining clients: ", clientConnections)
-			// fmt.Println(err) // prints "EOF" in server
 			return
 		}
 		m := parseMessage(c, text)
 		if reflect.ValueOf(m).IsZero() == false {
-			fmt.Println("struct is NOT empty")
 			if checkClients(c, m) == true {
 				broadcastMessage(m)
 			} else {
-				printErrorMessage(c)
+				printErrorMessage(c, m)
 			}
 		} else {
-			fmt.Println("struct is empty")
+			printErrorMessage(c, m)
 		}
 	}
 }
@@ -101,11 +100,8 @@ func parseMessage(c net.Conn, text string) Message {
 		msg := sender + ":" + textTrimmed
 		m = Message{receiver, sender, msg}
 	} else {
-		enc := gob.NewEncoder(c)
-		newMessage := "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
-		if err := enc.Encode(newMessage); err != nil {
-			log.Fatal(err)
-		}
+		// If message is not in the right format
+		option = 1
 	}
 	return m
 }
@@ -124,30 +120,15 @@ func checkClients(c net.Conn, m Message) bool {
 	if checkKey(m.senderID) == true && checkKey(m.receiverID) {
 		// Check if senderID matches client username
 		if getKey(c) == m.senderID {
-			// broadcastMessage(m)
 			return true
 		} else {
 			// If senderID does not match client username
+			option = 2
 			return false
-			/*
-				enc := gob.NewEncoder(c)
-				wrongUserMessage := "You are not " + m.senderID + "!"
-				if err := enc.Encode(wrongUserMessage); err != nil {
-					log.Fatal(err)
-				}
-
-			*/
 		}
 	} else {
+		option = 3
 		return false
-		/*
-			enc := gob.NewEncoder(c)
-			errorMessage := "Invalid user!"
-			if err := enc.Encode(errorMessage); err != nil {
-				log.Fatal(err)
-			}
-
-		*/
 	}
 }
 
@@ -161,9 +142,17 @@ func broadcastMessage(m Message) {
 	}
 }
 
-func printErrorMessage(c net.Conn) {
+func printErrorMessage(c net.Conn, m Message) {
 	enc := gob.NewEncoder(c)
-	errorMessage := "Invalid user!"
+	var errorMessage string
+	switch option {
+	case 1:
+		errorMessage = "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
+	case 2:
+		errorMessage = "You are not " + m.senderID + "!"
+	case 3:
+		errorMessage = "Invalid user!"
+	}
 	if err := enc.Encode(errorMessage); err != nil {
 		log.Fatal(err)
 	}
