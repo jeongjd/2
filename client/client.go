@@ -38,8 +38,6 @@ func createTCPClient() {
 
 func read(c net.Conn) {
 	for {
-		//reader := bufio.NewReader(c)
-		//message, err1 := reader.ReadString('\n')
 		var message string
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&message)
@@ -51,7 +49,6 @@ func read(c net.Conn) {
 			c.Close()
 			os.Exit(0)
 		}
-		//newMessage = strings.TrimSpace(message)
 		//printMessage := fmt.Sprintf("[%s] %s\n", t.Format(time.Kitchen), message)
 		fmt.Println(message)
 		fmt.Print(">> ")
@@ -63,18 +60,16 @@ func write(c net.Conn) {
 		reader := bufio.NewReader(os.Stdin)
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			break
+			return
 		}
 		if strings.Contains(message, "EXIT") {
 			fmt.Println("Exiting the client...")
 			return
 		}
-		// message = fmt.Sprintf("%s: %s\n", username, strings.Trim(message, "\n"))
 		enc := gob.NewEncoder(c)
 		if err := enc.Encode(message); err != nil {
 			log.Fatal(err)
 		}
-		//c.Write([]byte(message))
 		fmt.Print(">> ")
 	}
 }
