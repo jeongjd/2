@@ -44,6 +44,7 @@ func read(c net.Conn) {
 		if err != io.EOF && err != nil {
 			log.Fatal(err)
 		}
+		// COMMENT
 		if err == io.EOF {
 			fmt.Println("Connection closed.")
 			c.Close()
@@ -62,6 +63,7 @@ func write(c net.Conn) {
 		if err != nil {
 			return
 		}
+		// Struct Message
 		if strings.Contains(message, "EXIT") {
 			fmt.Println("Exiting the client...")
 			return
