@@ -39,18 +39,19 @@ func createTCPClient() {
 func read(c net.Conn) {
 	for {
 		var message string
+		// COMMENT
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&message)
 		if err != io.EOF && err != nil {
 			log.Fatal(err)
 		}
-		// COMMENT
+		// Close client connection if the server has shut down
 		if err == io.EOF {
-			fmt.Println("Connection closed.")
+			fmt.Println("Server has shut down. Client is now closing... ")
 			c.Close()
 			os.Exit(0)
 		}
-		//printMessage := fmt.Sprintf("[%s] %s\n", t.Format(time.Kitchen), message)
+		// printMessage := fmt.Sprintf("[%s] %s\n", t.Format(time.Kitchen), message)
 		fmt.Println(message)
 		fmt.Print(">> ")
 	}
@@ -63,7 +64,6 @@ func write(c net.Conn) {
 		if err != nil {
 			return
 		}
-		// Struct Message
 		if strings.Contains(message, "EXIT") {
 			fmt.Println("Exiting the client...")
 			return
@@ -72,6 +72,5 @@ func write(c net.Conn) {
 		if err := enc.Encode(message); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Print(">> ")
 	}
 }

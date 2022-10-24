@@ -1,25 +1,28 @@
 package main
 
 import (
+	"bufio"
 	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"reflect"
 	"strings"
 )
 
-// Message Struct
 type Message struct {
 	receiverID     string
 	senderID       string
 	messageContent string
 }
 
-// Declare and initialize global variables
 var (
+	// Map - key: username, value: connection
 	clientConnections = make(map[string]net.Conn)
-	option            = 0
+
+	// For switch/cases - printing error messages
+	option = 0
 )
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -28,6 +31,7 @@ func main() {
 	fmt.Print("Enter a port number: ")
 	fmt.Scanln(&port)
 	port = ":" + port
+
 	fmt.Println("Launching a TCP Chatroom Server...")
 
 	l, err := net.Listen("tcp4", port)
@@ -36,6 +40,10 @@ func main() {
 		return
 	}
 	defer l.Close()
+	// If using channels
+	// quit := make(chan string)
+	// go closeServer(quit)
+	go closeServer()
 	for {
 		c, err := l.Accept()
 		if err != nil {
@@ -46,30 +54,46 @@ func main() {
 	}
 }
 
+// Close server when "EXIT" is typed in the server side
+func closeServer() {
+	for {
+		fmt.Print(">> ")
+		reader := bufio.NewReader(os.Stdin)
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		if strings.TrimSpace(text) == "EXIT" {
+			fmt.Println("Server is shutting down... ")
+			os.Exit(0)
+		}
+	}
+}
+
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
+// Handle client connections - invoke other functions depending on the messages received
 func handleConnection(c net.Conn) {
 	for {
 		var text string
 		// COMMENT
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&text)
-		// COMMENT
+
+		// If a connection is closed delete the username from map (clientConnections)
 		if err != nil {
 			name := getKey(c)
-			// COMMENT
 			delete(clientConnections, name)
-			fmt.Printf("User '%s' left the server\n", name)
+			fmt.Printf("User '%s' disconnected from the server\n", name)
 			fmt.Println("remaining clients: ", clientConnections)
 			return
 		}
 		m := parseMessage(c, text)
-		// COMMENT
+		// Check if the struct Message is null or not
 		if reflect.ValueOf(m).IsZero() == false {
-			// COMMENT
+			// Check if the message has proper format (senderID, receiverID)
 			if checkClients(c, m) == true {
 				broadcastMessage(m)
 			} else {
-				// COMMENT
 				printErrorMessage(c, m)
 			}
 		} else {
@@ -78,7 +102,7 @@ func handleConnection(c net.Conn) {
 	}
 }
 
-// COMMENT
+// Get key of a map based on a value
 func getKey(c net.Conn) string {
 	for key, value := range clientConnections {
 		if c == value {
@@ -88,10 +112,12 @@ func getKey(c net.Conn) string {
 	return "Key does not Exist"
 }
 
-// COMMENT
+// Parse user messages, store variables, and return struct Message
 func parseMessage(c net.Conn, text string) Message {
 	textParsed := parseLine(text)
 	var m Message
+
+	// Store client username in the map (clientConnections)
 	if len(textParsed) == 1 && strings.Contains(text, "/") {
 		username := strings.Trim(text, "/")
 		username = strings.Trim(username, " \r\n")
@@ -105,18 +131,18 @@ func parseMessage(c net.Conn, text string) Message {
 		msg := sender + ":" + textTrimmed
 		m = Message{receiver, sender, msg}
 	} else {
-		// If message is not in the right format
+		// If message has invalid format
 		option = 1
 	}
 	return m
 }
 
-// COMMENT
+// Split a string into a string array
 func parseLine(line string) []string {
 	return strings.Split(line, " ")
 }
 
-// COMMENT
+// Check if certain keys exist in a map
 func checkKey(str string) bool {
 	for item := range clientConnections {
 		if item == str {
@@ -126,7 +152,7 @@ func checkKey(str string) bool {
 	return false
 }
 
-// COMMENT
+// Check if certain usernames exist in clientConnections map
 func checkClients(c net.Conn, m Message) bool {
 	// Check if both sender and receiver usernames exist
 	if checkKey(m.senderID) == true && checkKey(m.receiverID) {
@@ -139,16 +165,14 @@ func checkClients(c net.Conn, m Message) bool {
 			return false
 		}
 	} else {
-		// If either or both sender and receiver usernames does not exist
+		// If sender and/or receiver usernames do not exist
 		option = 3
 		return false
 	}
 }
 
-// COMMENT
+// Send private message to a specific client using gob
 func broadcastMessage(m Message) {
-	// Loop through all the connections and send messages to a specific user
-	// COMMENT
 	for item := range clientConnections {
 		if item == m.receiverID {
 			enc := gob.NewEncoder(clientConnections[item])
@@ -157,11 +181,10 @@ func broadcastMessage(m Message) {
 	}
 }
 
-// COMMENT
+// Print error messages depending on option (which error)
 func printErrorMessage(c net.Conn, m Message) {
 	enc := gob.NewEncoder(c)
 	var errorMessage string
-	// COMMENT
 	switch option {
 	case 1:
 		errorMessage = "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
