@@ -38,34 +38,35 @@ func main() {
 	}
 	defer l.Close()
 	// look into why this works
-	go func() {
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			openConnections[c] = true
-			newClient <- c
-			count++
-		}
-	}()
+
 	for {
-		select {
-		case c := <-newClient:
-			// Invoke broadcast message (broadcasts to the other connections
-			go handleConnection(c)
-		case c := <-disconnectedClient:
-			// remove/delete the connection
-			for item := range openConnections {
-				if item == c {
-					delete(openConnections, c)
-					fmt.Println("removed connection, remaining: ", openConnections)
-					fmt.Println("removed client = ", disconnectedClient)
-				}
-			}
+		c, err := l.Accept()
+		if err != nil {
+			fmt.Println(err)
+			return
 		}
+		go handleConnection(c)
+		//openConnections[c] = true
+		//newClient <- c
+		//count++
 	}
+
+	//for {
+	//	select {
+	//	case c := <-newClient:
+	//		// Invoke broadcast message (broadcasts to the other connections
+	//		go handleConnection(c)
+	//	case c := <-disconnectedClient:
+	//		// remove/delete the connection
+	//		for item := range openConnections {
+	//			if item == c {
+	//				delete(openConnections, c)
+	//				fmt.Println("removed connection, remaining: ", openConnections)
+	//				fmt.Println("removed client = ", disconnectedClient)
+	//			}
+	//		}
+	//	}
+	//}
 }
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -151,7 +152,7 @@ func checkClients(c net.Conn, m Message) {
 		}
 	} else {
 		enc := gob.NewEncoder(c)
-		errorMessage := "Invalid user! \n"
+		errorMessage := "Invalid user!"
 		if err := enc.Encode(errorMessage); err != nil {
 			log.Fatal(err)
 		}
