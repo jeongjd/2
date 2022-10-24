@@ -16,11 +16,8 @@ type Message struct {
 
 var (
 	// limit hashmap to 5
-	openConnections    = make(map[net.Conn]bool)
-	newClient          = make(chan net.Conn)
-	disconnectedClient = make(chan net.Conn)
-	clientConnections  = make(map[string]net.Conn)
-	count              = 0
+	newClient         = make(chan net.Conn)
+	clientConnections = make(map[string]net.Conn)
 )
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -48,32 +45,12 @@ func main() {
 			}
 			newClient <- c
 			// go handleConnection(c)
-			//openConnections[c] = true
-			//newClient <- c
-			//count++
 		}
 	}()
 	for {
 		c := <-newClient
 		go handleConnection(c)
 	}
-
-	//for {
-	//	select {
-	//	case c := <-newClient:
-	//		// Invoke broadcast message (broadcasts to the other connections
-	//		go handleConnection(c)
-	//	case c := <-disconnectedClient:
-	//		// remove/delete the connection
-	//		for item := range openConnections {
-	//			if item == c {
-	//				delete(openConnections, c)
-	//				fmt.Println("removed connection, remaining: ", openConnections)
-	//				fmt.Println("removed client = ", disconnectedClient)
-	//			}
-	//		}
-	//	}
-	//}
 }
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -83,7 +60,7 @@ func handleConnection(c net.Conn) {
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&text)
 		if err != nil {
-			disconnectedClient <- c
+			// disconnectedClient <- c
 			name := getKey(c)
 			delete(clientConnections, name)
 			fmt.Printf("User '%s' left the server\n", name)
@@ -149,7 +126,7 @@ func checkClients(c net.Conn, m Message) {
 	if checkKey(m.senderID) == true && checkKey(m.receiverID) {
 		// Check if senderID matches client username
 		if getKey(c) == m.senderID {
-			broadcastMessage(c, m)
+			broadcastMessage(m)
 		} else {
 			enc := gob.NewEncoder(c)
 			wrongUserMessage := "You are not " + m.senderID + "!"
@@ -166,9 +143,7 @@ func checkClients(c net.Conn, m Message) {
 	}
 }
 
-func broadcastMessage(c net.Conn, m Message) {
-	fmt.Println("this is connection# ", count)
-
+func broadcastMessage(m Message) {
 	// Loop through all the connections and send messages to a specific user
 	for item := range clientConnections {
 		if item == m.receiverID {
