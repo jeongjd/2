@@ -9,12 +9,14 @@ import (
 	"strings"
 )
 
+// Message Struct
 type Message struct {
 	receiverID     string
 	senderID       string
 	messageContent string
 }
 
+// Declare and initialize global variables
 var (
 	clientConnections = make(map[string]net.Conn)
 	option            = 0
@@ -34,7 +36,6 @@ func main() {
 		return
 	}
 	defer l.Close()
-
 	for {
 		c, err := l.Accept()
 		if err != nil {
@@ -49,20 +50,26 @@ func main() {
 func handleConnection(c net.Conn) {
 	for {
 		var text string
+		// COMMENT
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&text)
+		// COMMENT
 		if err != nil {
 			name := getKey(c)
+			// COMMENT
 			delete(clientConnections, name)
 			fmt.Printf("User '%s' left the server\n", name)
 			fmt.Println("remaining clients: ", clientConnections)
 			return
 		}
 		m := parseMessage(c, text)
+		// COMMENT
 		if reflect.ValueOf(m).IsZero() == false {
+			// COMMENT
 			if checkClients(c, m) == true {
 				broadcastMessage(m)
 			} else {
+				// COMMENT
 				printErrorMessage(c, m)
 			}
 		} else {
@@ -71,10 +78,7 @@ func handleConnection(c net.Conn) {
 	}
 }
 
-func parseLine(line string) []string {
-	return strings.Split(line, " ")
-}
-
+// COMMENT
 func getKey(c net.Conn) string {
 	for key, value := range clientConnections {
 		if c == value {
@@ -84,6 +88,7 @@ func getKey(c net.Conn) string {
 	return "Key does not Exist"
 }
 
+// COMMENT
 func parseMessage(c net.Conn, text string) Message {
 	textParsed := parseLine(text)
 	var m Message
@@ -106,6 +111,12 @@ func parseMessage(c net.Conn, text string) Message {
 	return m
 }
 
+// COMMENT
+func parseLine(line string) []string {
+	return strings.Split(line, " ")
+}
+
+// COMMENT
 func checkKey(str string) bool {
 	for item := range clientConnections {
 		if item == str {
@@ -115,6 +126,7 @@ func checkKey(str string) bool {
 	return false
 }
 
+// COMMENT
 func checkClients(c net.Conn, m Message) bool {
 	// Check if both sender and receiver usernames exist
 	if checkKey(m.senderID) == true && checkKey(m.receiverID) {
@@ -127,13 +139,16 @@ func checkClients(c net.Conn, m Message) bool {
 			return false
 		}
 	} else {
+		// If either or both sender and receiver usernames does not exist
 		option = 3
 		return false
 	}
 }
 
+// COMMENT
 func broadcastMessage(m Message) {
 	// Loop through all the connections and send messages to a specific user
+	// COMMENT
 	for item := range clientConnections {
 		if item == m.receiverID {
 			enc := gob.NewEncoder(clientConnections[item])
@@ -142,9 +157,11 @@ func broadcastMessage(m Message) {
 	}
 }
 
+// COMMENT
 func printErrorMessage(c net.Conn, m Message) {
 	enc := gob.NewEncoder(c)
 	var errorMessage string
+	// COMMENT
 	switch option {
 	case 1:
 		errorMessage = "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
@@ -153,6 +170,7 @@ func printErrorMessage(c net.Conn, m Message) {
 	case 3:
 		errorMessage = "Invalid user!"
 	}
+	// COMMENT
 	if err := enc.Encode(errorMessage); err != nil {
 		log.Fatal(err)
 	}
