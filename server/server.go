@@ -128,6 +128,7 @@ func parseMessage(c net.Conn, text string) Message {
 	if len(textParsed) == 1 && strings.Contains(text, "/") {
 		username := strings.Trim(text, "/")
 		username = strings.Trim(username, " \r\n")
+		// Prevents other go routines from editing the clientConnections hashmap in order to synchronize the routines
 		clientConnectionsMutex.Lock()
 		clientConnections[username] = c
 		clientConnectionsMutex.Unlock()
@@ -153,6 +154,7 @@ func parseLine(line string) []string {
 
 // Check if certain keys exist in a map
 func checkKey(str string) bool {
+	// Prevents other go routines from editing the clientConnections hashmap in order to synchronize the routines
 	clientConnectionsMutex.RLock()
 	defer clientConnectionsMutex.RUnlock()
 	for item := range clientConnections {
@@ -184,6 +186,7 @@ func checkClients(c net.Conn, m Message) bool {
 
 // Send private message to a specific client using gob
 func broadcastMessage(m Message) {
+	// Prevents other go routines from editing the clientConnections hashmap in order to synchronize the routines
 	clientConnectionsMutex.RLock()
 	defer clientConnectionsMutex.RUnlock()
 	for item := range clientConnections {
