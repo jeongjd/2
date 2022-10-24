@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 type Message struct {
@@ -23,6 +24,9 @@ var (
 
 	// For switch/cases - printing error messages
 	option = 0
+
+	// Read/Write mutex to synchronize the clientConnections hashmap between the threads (instead of a channel)
+	clientConnectionsMutex = sync.RWMutex{}
 )
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -74,13 +78,14 @@ func closeServer() {
 func handleConnection(c net.Conn) {
 	for {
 		var text string
-		// COMMENT
+		// Reads and decodes data from connection
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&text)
 
 		// If a connection is closed delete the username from map (clientConnections)
 		if err != nil {
 			name := getKey(c)
+			clientConnectionsMutex.Lock()
 			delete(clientConnections, name)
 			fmt.Printf("User '%s' disconnected from the server\n", name)
 			fmt.Println("remaining clients: ", clientConnections)
@@ -89,7 +94,7 @@ func handleConnection(c net.Conn) {
 
 		var m Message
 		if getUsername(text, c) == false {
-			m = parseMessage(c, text)
+			m = parseMessage(text)
 			if reflect.ValueOf(m).IsZero() == true {
 				goto LAST
 			}
@@ -104,6 +109,8 @@ func handleConnection(c net.Conn) {
 
 // Get key of a map based on a value
 func getKey(c net.Conn) string {
+	clientConnectionsMutex.Lock()
+	defer clientConnectionsMutex.Unlock()
 	for key, value := range clientConnections {
 		if c == value {
 			return key
@@ -119,7 +126,11 @@ func getUsername(text string, c net.Conn) bool {
 		username := strings.Trim(text, "/")
 		username = strings.Trim(username, " \r\n")
 		if checkKey(username) == false {
+			// Prevents other go routines from editing the clientConnections hashmap in order to synchronize the routines
+			clientConnectionsMutex.Lock()
 			clientConnections[username] = c
+			clientConnectionsMutex.Unlock()
+			fmt.Printf("User '%s' connected to the server\n", username)
 		} else {
 			option = 1
 		}
@@ -130,6 +141,9 @@ func getUsername(text string, c net.Conn) bool {
 
 // Check if certain keys exist in a map
 func checkKey(str string) bool {
+	// Prevents other go routines from editing the clientConnections hashmap in order to synchronize the routines
+	clientConnectionsMutex.Lock()
+	defer clientConnectionsMutex.Unlock()
 	for item := range clientConnections {
 		if item == str {
 			return true
@@ -139,7 +153,7 @@ func checkKey(str string) bool {
 }
 
 // Parse user messages and return struct Message
-func parseMessage(c net.Conn, text string) Message {
+func parseMessage(text string) Message {
 	textParsed := parseLine(text)
 	var m Message
 	if len(textParsed) >= 3 {
@@ -182,6 +196,9 @@ func checkClients(c net.Conn, m Message) bool {
 
 // Send private message to a specific client using gob
 func broadcastMessage(m Message) {
+	// Prevents other go routines from reading the clientConnections hashmap in order to synchronize the routines
+	clientConnectionsMutex.RLock()
+	defer clientConnectionsMutex.RUnlock()
 	for item := range clientConnections {
 		if item == m.receiverID {
 			enc := gob.NewEncoder(clientConnections[item])
@@ -207,7 +224,7 @@ func printErrorMessage(c net.Conn, m Message) {
 	// Reset option value
 	option = 0
 
-	// COMMENT
+	// Encodes and sends error message to client
 	if err := enc.Encode(errorMessage); err != nil {
 		log.Fatal(err)
 	}
