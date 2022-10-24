@@ -15,9 +15,10 @@ type Message struct {
 }
 
 var (
-	// limit hashmap to 5
+	// limit map to 5
 	newClient         = make(chan net.Conn)
 	clientConnections = make(map[string]net.Conn)
+	m                 Message
 )
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -34,23 +35,33 @@ func main() {
 		return
 	}
 	defer l.Close()
-	// look into why this works
 
-	go func() {
-		for {
-			c, err := l.Accept()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			newClient <- c
-			// go handleConnection(c)
-		}
-	}()
 	for {
-		c := <-newClient
+		c, err := l.Accept()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		go handleConnection(c)
 	}
+
+	/*
+		go func() {
+			for {
+				c, err := l.Accept()
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				newClient <- c
+				// go handleConnection(c)
+			}
+		}()
+		for {
+			c := <-newClient
+			go handleConnection(c)
+		}
+	*/
 }
 
 // partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
@@ -60,7 +71,6 @@ func handleConnection(c net.Conn) {
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&text)
 		if err != nil {
-			// disconnectedClient <- c
 			name := getKey(c)
 			delete(clientConnections, name)
 			fmt.Printf("User '%s' left the server\n", name)
@@ -68,30 +78,7 @@ func handleConnection(c net.Conn) {
 			fmt.Println(err) // prints "EOF" in server
 			return
 		}
-		textParsed := parseLine(text)
-		if len(textParsed) == 1 && strings.Contains(text, "/") {
-			username := strings.Trim(text, "/")
-			username = strings.Trim(username, " \r\n")
-			clientConnections[username] = c
-		} else {
-			var m Message
-			if len(textParsed) >= 3 {
-				receiver := textParsed[0]
-				sender := textParsed[1]
-				textTrimmed := strings.Join(textParsed, " ")
-				needsTrim := receiver + " " + sender
-				textTrimmed = strings.TrimPrefix(textTrimmed, needsTrim)
-				msg := sender + ":" + textTrimmed
-				m = Message{receiver, sender, msg}
-			} else {
-				enc := gob.NewEncoder(c)
-				newMessage := "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
-				if err := enc.Encode(newMessage); err != nil {
-					log.Fatal(err)
-				}
-			}
-			checkClients(c, m)
-		}
+		parseMessage(c, text)
 	}
 }
 
@@ -118,16 +105,37 @@ func checkKey(str string) bool {
 }
 
 func parseMessage(c net.Conn, text string) {
-
+	textParsed := parseLine(text)
+	if len(textParsed) == 1 && strings.Contains(text, "/") {
+		username := strings.Trim(text, "/")
+		username = strings.Trim(username, " \r\n")
+		clientConnections[username] = c
+	} else if len(textParsed) >= 3 {
+		receiver := textParsed[0]
+		sender := textParsed[1]
+		textTrimmed := strings.Join(textParsed, " ")
+		needsTrim := receiver + " " + sender
+		textTrimmed = strings.TrimPrefix(textTrimmed, needsTrim)
+		msg := sender + ":" + textTrimmed
+		m = Message{receiver, sender, msg}
+		checkClients(c, m)
+	} else {
+		enc := gob.NewEncoder(c)
+		newMessage := "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
+		if err := enc.Encode(newMessage); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func checkClients(c net.Conn, m Message) {
-	// check if both sender and receiver usernames exist
+	// Check if both sender and receiver usernames exist
 	if checkKey(m.senderID) == true && checkKey(m.receiverID) {
 		// Check if senderID matches client username
 		if getKey(c) == m.senderID {
 			broadcastMessage(m)
 		} else {
+			// If senderID does not match client username
 			enc := gob.NewEncoder(c)
 			wrongUserMessage := "You are not " + m.senderID + "!"
 			if err := enc.Encode(wrongUserMessage); err != nil {
@@ -149,7 +157,6 @@ func broadcastMessage(m Message) {
 		if item == m.receiverID {
 			enc := gob.NewEncoder(clientConnections[item])
 			enc.Encode(m.messageContent)
-			//clientConnections[item].Write([]byte(m.messageContent))
 		}
 	}
 }
