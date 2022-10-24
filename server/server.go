@@ -39,16 +39,23 @@ func main() {
 	defer l.Close()
 	// look into why this works
 
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			fmt.Println(err)
-			return
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			newClient <- c
+			// go handleConnection(c)
+			//openConnections[c] = true
+			//newClient <- c
+			//count++
 		}
+	}()
+	for {
+		c := <-newClient
 		go handleConnection(c)
-		//openConnections[c] = true
-		//newClient <- c
-		//count++
 	}
 
 	//for {
