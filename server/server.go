@@ -74,6 +74,7 @@ func closeServer() {
 
 // Handle client connections - invoke other functions depending on the messages received
 func handleConnection(c net.Conn) {
+	var count = 0
 	for {
 		var text string
 		// Reads and decodes data from connection
@@ -95,7 +96,8 @@ func handleConnection(c net.Conn) {
 		/* If it is a new connection store the username and connection into clientConnections map and return true, otherwise if it is a valid message
 		the recipient client exists broadcast the message to recipient otherwise broadcast error message to sender client
 		*/
-		if processUsername(text, c) == false {
+		count++
+		if processUsername(text, c, count) == false {
 			m = parseMessage(text)
 			if reflect.ValueOf(m).IsZero() == true {
 				goto LAST
@@ -106,6 +108,7 @@ func handleConnection(c net.Conn) {
 		}
 	LAST:
 		broadcastErrorMessage(c, m.senderID)
+		count++
 	}
 }
 
@@ -122,7 +125,7 @@ func getKey(c net.Conn) string {
 }
 
 // Store client username in map (clientConnections)
-func processUsername(text string, c net.Conn) bool {
+func processUsername(text string, c net.Conn, count int) bool {
 	textParsed := parseLine(text)
 	if len(textParsed) == 1 && strings.Contains(text, "/") {
 		username := strings.Trim(text, "/")
@@ -136,6 +139,9 @@ func processUsername(text string, c net.Conn) bool {
 		} else {
 			option = 1
 		}
+		return true
+	} else if len(textParsed) == 1 && count == 1 {
+		option = 5
 		return true
 	}
 	return false
@@ -222,6 +228,8 @@ func broadcastErrorMessage(c net.Conn, senderID string) {
 		errorMessage = "You are not " + senderID + "!"
 	case 4:
 		errorMessage = "Invalid user!"
+	case 5:
+		errorMessage = "Enter the username in the correct format /username"
 	}
 	// Reset option value
 	option = 0
