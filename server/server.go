@@ -92,7 +92,10 @@ func handleConnection(c net.Conn) {
 		}
 
 		var m Message
-		if getUsername(text, c) == false {
+		/* If it is a new connection store the username and connection into clientConnections map and return true, otherwise if it is a valid message
+		the recipient client exists broadcast the message to recipient otherwise broadcast error message to sender client
+		*/
+		if processUsername(text, c) == false {
 			m = parseMessage(text)
 			if reflect.ValueOf(m).IsZero() == true {
 				goto LAST
@@ -102,7 +105,7 @@ func handleConnection(c net.Conn) {
 			}
 		}
 	LAST:
-		printErrorMessage(c, m)
+		broadcastErrorMessage(c, m.senderID)
 	}
 }
 
@@ -119,7 +122,7 @@ func getKey(c net.Conn) string {
 }
 
 // Store client username in map (clientConnections)
-func getUsername(text string, c net.Conn) bool {
+func processUsername(text string, c net.Conn) bool {
 	textParsed := parseLine(text)
 	if len(textParsed) == 1 && strings.Contains(text, "/") {
 		username := strings.Trim(text, "/")
@@ -207,7 +210,7 @@ func broadcastMessage(m Message) {
 }
 
 // Print error messages depending on option (which error)
-func printErrorMessage(c net.Conn, m Message) {
+func broadcastErrorMessage(c net.Conn, senderID string) {
 	enc := gob.NewEncoder(c)
 	var errorMessage string
 	switch option {
@@ -216,7 +219,7 @@ func printErrorMessage(c net.Conn, m Message) {
 	case 2:
 		errorMessage = "Invalid input! Please type in the form of {To:user} {From:user} {message} \n"
 	case 3:
-		errorMessage = "You are not " + m.senderID + "!"
+		errorMessage = "You are not " + senderID + "!"
 	case 4:
 		errorMessage = "Invalid user!"
 	}
