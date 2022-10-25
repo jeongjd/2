@@ -56,11 +56,11 @@ Type "EXIT" (upper case only) in the server side terminal
     
 
 Design Choices
-	Gob Serialization: Instead of using the write method from the net package, the program uses gob serialization. The client encodes the input command and sends it to the server which decodes it, parses it, encodes it and then sends it to the recipient client. The recipient client decodes the message from the server and prints it.. Gob serialization was chosen because it is extremely efficient and fast compared to other serialization methods such as JSON. Since this program and its communication is done entirely in Go, it is safe to use gob serialization.
+Gob Serialization: Instead of using the write method from the net package, the program uses gob serialization. The client encodes the input command and sends it to the server which decodes it, parses it, encodes it and then sends it to the recipient client. The recipient client decodes the message from the server and prints it.. Gob serialization was chosen because it is extremely efficient and fast compared to other serialization methods such as JSON. Since this program and its communication is done entirely in Go, it is safe to use gob serialization.
 
-	Mutex: Instead of using a channel to communicate between the go threads, a global variable was used. A hashtable keeps track of the client username and connection. The hashtable is used by the go threads to cache the usernames and connections. That way each client can send a message to any client that joins since the hash table is a global variable. However since the hashtable is being mutated by multiple threads, a read and write mutex was used to synchronize access, that way whenever a go thread updates the hashtable by either adding or removing a connection another go threads cannot access it until it is done updating. This makes the server safe and prevents race problems. 
+Mutex: Instead of using a channel to communicate between the go threads, a global variable was used. A hashtable keeps track of the client username and connection. The hashtable is used by the go threads to cache the usernames and connections. That way each client can send a message to any client that joins since the hash table is a global variable. However since the hashtable is being mutated by multiple threads, a read and write mutex was used to synchronize access, that way whenever a go thread updates the hashtable by either adding or removing a connection another go threads cannot access it until it is done updating. This makes the server safe and prevents race problems. 
 
-	Goto statement: It is used for error handling. If there is an error, it will skip over to the LAST: to invoke broadcastErrorMessage function. 
+Goto statement: It is used for error handling. If there is an error, it will skip over to the LAST: to invoke broadcastErrorMessage function. 
 
 
 The Code Flow 
