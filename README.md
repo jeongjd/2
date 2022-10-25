@@ -3,7 +3,7 @@
 ## Instructions
 
 ## (NEED TO CHANGE name of REPO!!!) 
-In your terminal, 
+In your terminal, git clone the repository 
 
     git clone git@github.com:jeongjd/2.git 
    
@@ -55,7 +55,9 @@ Type "EXIT" (upper case only) in the server side terminal
     
 ## Design
 
-## The Flow Of the Code 
+## The Code Flow: 
+
+The program creates a TCP server, which accepts and establishes a client connection. 
 
 
 
