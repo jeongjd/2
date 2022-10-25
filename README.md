@@ -24,7 +24,7 @@ Open up a new terminal. cd into the directory that contains the cloned repo 2.
     go run client.go 
     
 You will be prompted to enter a host address, port number, and username. 
-To create a client with a connection to a server, Enter the SAME port number used to create the server. 
+To create a client with a connection to a server, enter the SAME port number used to create the server. 
 
     $ Enter a host address:
     $ Enter a port number: 
@@ -33,7 +33,7 @@ To create a client with a connection to a server, Enter the SAME port number use
 For every new client, open up a new terminal to connect to the server. 
 
 ### To Send A Private Message
-In the client window, Enter the command in the following format: {To} {From} {Message}
+In the client window, enter the command in the following format: {To} {From} {Message}
 
 For example, 
 
