@@ -55,8 +55,8 @@ Type "EXIT" (upper case only) in the server side terminal
     $ Server is shutting down... 
     
 
-**Design Choices
-**	
+Design Choices
+	
 	Gob Serialization: Instead of using the write method from the net package, the program uses gob serialization. The client encodes the input command and sends it to the server which decodes it, parses it, encodes it and then sends it to the recipient client. The recipient client decodes the message from the server and prints it.. Gob serialization was chosen because it is extremely efficient and fast compared to other serialization methods such as JSON. Since this program and its communication is done entirely in Go, it is safe to use gob serialization.
 
 	
