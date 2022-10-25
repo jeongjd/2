@@ -21,13 +21,14 @@ type Message struct {
 var (
 	// Map - key: (client) username, value: connection
 	clientConnections = make(map[string]net.Conn)
+
 	// For switch/cases - printing error messages
 	option = 0
+
 	// Read/Write mutex to synchronize the clientConnections hashmap between the threads (instead of a channel)
 	clientConnectionsMutex = sync.RWMutex{}
 )
 
-// partially from https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
 func main() {
 	var port string
 	fmt.Print("Enter a port number: ")
@@ -42,9 +43,6 @@ func main() {
 		return
 	}
 	defer l.Close()
-	// If using channels
-	// quit := make(chan string)
-	// go closeServer(quit)
 	go closeServer()
 	for {
 		c, err := l.Accept()
@@ -86,9 +84,8 @@ func handleConnection(c net.Conn) {
 			name := getKey(c)
 			clientConnectionsMutex.Lock()
 			delete(clientConnections, name)
-			clientConnectionsMutex.Lock()
+			clientConnectionsMutex.Unlock()
 			fmt.Printf("User '%s' disconnected from the server\n", name)
-			fmt.Println("remaining clients: ", clientConnections)
 			return
 		}
 
@@ -107,7 +104,9 @@ func handleConnection(c net.Conn) {
 			}
 		}
 	LAST:
-		broadcastErrorMessage(c, m.senderID)
+		if option != 0 {
+			broadcastErrorMessage(c, m.senderID)
+		}
 		count++
 	}
 }
@@ -124,7 +123,7 @@ func getKey(c net.Conn) string {
 	return "Key does not Exist"
 }
 
-// Store client username in map (clientConnections)
+// Returns true if client username is stored properly in map (clientConnections), otherwise return false
 func processUsername(text string, c net.Conn, count int) bool {
 	textParsed := parseLine(text)
 	if len(textParsed) == 1 && strings.Contains(text, "/") {

@@ -9,11 +9,9 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 )
 
 var (
-	t           = time.Now()
 	hostAddress = " "
 	port        = " "
 )
@@ -39,7 +37,6 @@ func createTCPClient() {
 func read(c net.Conn) {
 	for {
 		var message string
-		// COMMENT
 		dec := gob.NewDecoder(c)
 		err := dec.Decode(&message)
 		if err != io.EOF && err != nil {
@@ -51,7 +48,6 @@ func read(c net.Conn) {
 			c.Close()
 			os.Exit(0)
 		}
-		// printMessage := fmt.Sprintf("[%s] %s\n", t.Format(time.Kitchen), message)
 		fmt.Println(message)
 		fmt.Print(">> ")
 	}
