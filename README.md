@@ -18,7 +18,7 @@ You will be prompted to enter a port number. This will create a TCP server that 
 
 ### To Create The Client:
 
-Open up a new terminal. 
+Open up a new terminal. cd into the directory that contains the cloned repo 2. 
 
     cd 2/client
     go run client.go 
@@ -38,6 +38,24 @@ In the client window, Enter the command in the following format: {To} {From} {Me
 For example, 
 
     $ Bob Alex hello 
+
+### To Exit The Client Connection
+
+Type "EXIT" (upper case only!) in the client side terminal 
+
+    $ EXIT
+    $ Exiting the client... 
+
+### To Shut Down The Server 
+
+Type "EXIT" (upper case only) in the server side terminal 
+
+    $ EXIT
+    $ Server is shutting down... 
+    
+## Design
+
+## The Flow Of the Code 
 
 
 
