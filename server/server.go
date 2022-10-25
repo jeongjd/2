@@ -85,6 +85,7 @@ func handleConnection(c net.Conn) {
 			name := getKey(c)
 			clientConnectionsMutex.Lock()
 			delete(clientConnections, name)
+			clientConnectionsMutex.Lock()
 			fmt.Printf("User '%s' disconnected from the server\n", name)
 			fmt.Println("remaining clients: ", clientConnections)
 			return
@@ -140,8 +141,8 @@ func getUsername(text string, c net.Conn) bool {
 // Check if certain keys exist in a map
 func checkKey(str string) bool {
 	// Prevents other go routines from editing the clientConnections hashmap in order to synchronize the routines
-	clientConnectionsMutex.Lock()
-	defer clientConnectionsMutex.Unlock()
+	clientConnectionsMutex.RLock()
+	defer clientConnectionsMutex.RUnlock()
 	for item := range clientConnections {
 		if item == str {
 			return true
