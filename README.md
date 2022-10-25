@@ -15,7 +15,7 @@ In your terminal,
 You will be prompted to enter a port number. This will create a TCP server that listens to that port for connections. 
 
     $ Enter a port number: 
-    
+
 ### To Create The Client:
 
 Open up a new terminal. 
@@ -34,5 +34,8 @@ For every new client, open up a new terminal to connect to the server.
 
 ### To Send A Private Message
 In the client window, Enter the command in the following format: {To} {From} {Message}
+For example, 
+    $ Bob Alex hello 
+
 
 
