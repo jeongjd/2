@@ -21,10 +21,8 @@ type Message struct {
 var (
 	// Map - key: (client) username, value: connection
 	clientConnections = make(map[string]net.Conn)
-
 	// For switch/cases - printing error messages
 	option = 0
-
 	// Read/Write mutex to synchronize the clientConnections hashmap between the threads (instead of a channel)
 	clientConnectionsMutex = sync.RWMutex{}
 )
