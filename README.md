@@ -34,7 +34,9 @@ For every new client, open up a new terminal to connect to the server.
 
 ### To Send A Private Message
 In the client window, Enter the command in the following format: {To} {From} {Message}
+
 For example, 
+
     $ Bob Alex hello 
 
 
